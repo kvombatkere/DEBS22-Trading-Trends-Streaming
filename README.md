@@ -1,7 +1,7 @@
 # DEBS22-Group11
 Code repository for DEBS 2022 Grand Challenge Submission for Group 11.
 
-# Pre-requisites
+# Prerequisites
 * Java OpenJDK 11
 * Apache Maven 
 * Apache Flink 1.14.4
