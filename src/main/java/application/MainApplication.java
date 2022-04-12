@@ -52,7 +52,7 @@ public class MainApplication {
         //Set up the streaming execution environment
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         env.setParallelism(12); //set parallelism
-        env.setBufferTimeout(12L); //buffer timeout
+        env.setBufferTimeout(10L); //buffer timeout
 
         Class<?> unmodColl = Class.forName("java.util.Collections$UnmodifiableCollection");
         env.getConfig().addDefaultKryoSerializer(unmodColl, UnmodifiableCollectionsSerializer.class);
@@ -60,7 +60,7 @@ public class MainApplication {
         DataStream<IncomingBatch> incomingBatchDataStream = env.addSource(new GrpcClient(benchmark)).name("API");
 
         //Source Operator
-        DataStream<StockMeasurement> measurements = incomingBatchDataStream.flatMap(new EventGenerator(benchmark)).name("Event Generator").setParallelism(6);
+        DataStream<StockMeasurement> measurements = incomingBatchDataStream.flatMap(new EventGenerator(benchmark)).name("Event Generator").setParallelism(8);
         KeyedStream<StockMeasurement,String> stockKeyedStream = measurements
                 .assignTimestampsAndWatermarks(WatermarkStrategy.forGenerator(context -> new StockMeasurementWatermarkGenerator()).withTimestampAssigner(new StockMeasurementWaterMark()))
                 .keyBy(StockMeasurement::getSymbol);
@@ -112,8 +112,8 @@ public class MainApplication {
         @Override
         public void apply(GlobalWindow globalWindow, Iterable<Boolean> iterable, Collector<Object> collector) throws Exception {
             logger.debug("Obtained last batch events of both Queries....closing benchmark....");
-            logger.debug("Sleeping for 0.5 seconds to ensure all processing is completed....");
-            Thread.sleep(1500);
+            logger.debug("Sleeping for 0.1 seconds to ensure all processing is completed....");
+            Thread.sleep(100);
             ChallengerGrpc.ChallengerBlockingStub resultClient = null;
             if(Objects.nonNull(client)) {
                 resultClient = client;
