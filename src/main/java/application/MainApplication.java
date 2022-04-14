@@ -43,7 +43,7 @@ public class MainApplication {
     public static long benchId;
     public static ChallengerGrpc.ChallengerBlockingStub client;
     public static Benchmark benchmark;
-    public static Boolean visualizationFlag = Boolean.FALSE;
+    public static Boolean visualizationFlag = Boolean.TRUE;
     private static final Logger logger = LoggerFactory.getLogger(MainApplication.class);
     private static final OutputTag<ResultQ1Wrapper> benchMarkQ1 = new OutputTag<>("benchmark-q1"){};
     private static final OutputTag<ResultQ2Wrapper> benchMarkQ2 = new OutputTag<>("benchmark-q2"){};
@@ -51,7 +51,7 @@ public class MainApplication {
     public static void main(String[] args) throws Exception {
         //Set up the streaming execution environment
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-        env.setParallelism(12); //set parallelism
+        env.setParallelism(20); //set parallelism
         env.setBufferTimeout(10L); //buffer timeout
 
         Class<?> unmodColl = Class.forName("java.util.Collections$UnmodifiableCollection");
@@ -60,7 +60,7 @@ public class MainApplication {
         DataStream<IncomingBatch> incomingBatchDataStream = env.addSource(new GrpcClient(benchmark)).name("API");
 
         //Source Operator
-        DataStream<StockMeasurement> measurements = incomingBatchDataStream.flatMap(new EventGenerator(benchmark)).name("Event Generator").setParallelism(6);
+        DataStream<StockMeasurement> measurements = incomingBatchDataStream.flatMap(new EventGenerator(benchmark)).name("Event Generator").setParallelism(10);
         KeyedStream<StockMeasurement,String> stockKeyedStream = measurements
                 .assignTimestampsAndWatermarks(WatermarkStrategy.forGenerator(context -> new StockMeasurementWatermarkGenerator()).withTimestampAssigner(new StockMeasurementWaterMark()))
                 .keyBy(StockMeasurement::getSymbol);
@@ -71,7 +71,7 @@ public class MainApplication {
         //Sideoutput for processing Q1 results
         SingleOutputStreamOperator<Boolean> q1ResultsDataStream = emaDataStream.getSideOutput(benchMarkQ1).keyBy(ResultQ1Wrapper::getBatchSeqId).window(GlobalWindows.create())
                 .trigger(new ResultQ1Trigger())
-                .process(new ResultQ1ProcessWindow(benchmark)).setParallelism(12).name("Q1 Benchmark SideOutput");
+                .process(new ResultQ1ProcessWindow(benchmark)).setParallelism(20).name("Q1 Benchmark SideOutput");
 
         //Operator for Q2
         KeyedStream<EmaStream, String> keyStream = emaDataStream.keyBy(EmaStream::getSymbol);
@@ -80,7 +80,7 @@ public class MainApplication {
         //Handle Q2 result
         SingleOutputStreamOperator<Boolean> q2ResultsDataStream = q2OutputStream.getSideOutput(benchMarkQ2).keyBy(ResultQ2Wrapper::getBatchSeqId).window(GlobalWindows.create())
                 .trigger(new ResultQ2Trigger())
-                .process(new ResultQ2ProcessWindow(benchmark)).setParallelism(12).name("Q2 Benchmark SideOutput");
+                .process(new ResultQ2ProcessWindow(benchmark)).setParallelism(20).name("Q2 Benchmark SideOutput");
 
         //Close Operator: Closes on completion of Q1 and Q2
         q1ResultsDataStream.union(q2ResultsDataStream).countWindowAll(2).apply(new CloseBenchMarkClass(benchmark)).name("Close Benchmark");
@@ -187,7 +187,7 @@ public class MainApplication {
                         String symbolState = stockMeasurement.getSymbol();
                         Float ema38LastState = Objects.isNull(emaValue38State.value())?0: emaValue38State.value().getEmaValue();
                         Float ema100LastState = Objects.isNull(emaValue100State.value())?0: emaValue100State.value().getEmaValue();
-                        logger.debug("BatchId: {} Symbol {} Send result to sideoutput", stockMeasurement.getBatchSeqId(), symbolState);
+                        logger.info("BatchId: {} Symbol {} Send result to sideoutput", stockMeasurement.getBatchSeqId(), symbolState);
                         logger.debug("This is the last event in batch number {} for the symbol {} lastBatch: {}", stockMeasurement.getBatchSeqId(), symbolState, stockMeasurement.getLastBatch());
                         context.output(benchMarkQ1, new ResultQ1Wrapper(symbolState, ema38LastState, ema100LastState, stockMeasurement.getBatchSeqId(), stockMeasurement.getTotalBatchBenchmarkEvents(), stockMeasurement.getLastBatch(), true));
                     }
@@ -503,7 +503,7 @@ public class MainApplication {
                         .build();
                 try {
                     resultClient.resultQ1(submitData);
-                    logger.debug("BatchId: {} Completed sending benchmark Q1", batchId);
+                    logger.info("BatchId: {} Completed sending benchmark Q1", batchId);
                 } catch (Exception e) {
                     logger.error("Error: {}", e.getMessage());
                 }
@@ -594,7 +594,7 @@ public class MainApplication {
                         .build();
                 try {
                     resultClient.resultQ2(submitData);
-                    logger.debug("BatchId: {} Completed sending benchmark Q2", batchId);
+                    logger.info("BatchId: {} Completed sending benchmark Q2", batchId);
                 } catch (Exception e) {
                     logger.error("Error: {}", e.getMessage());
                 }
@@ -606,8 +606,9 @@ public class MainApplication {
             if (visualizationFlag){
                 for (ResultQ2Wrapper resultQ2 : iterable) {
                     crossOverEvents.clear();
-                    crossOverEvents.addAll(resultQ2.getCrossoverEventList());
-                    crossOverEvents.get(0);
+                    if(Objects.nonNull(resultQ2.getCrossoverEventList())) {
+                        crossOverEvents.addAll(resultQ2.getCrossoverEventList());
+                    }
                     getRuntimeContext().getMetricGroup().gauge("numberCrossoverEvents", new Gauge<Integer>() {
                         @Override
                         public Integer getValue() {
@@ -699,7 +700,7 @@ public class MainApplication {
             } else {
                 // Check if batch has finished so Query 2 results should be sent to GRPC server per symbol
                 // Check if symbol belong to the subscription list so Query 2 results should be sent to GRPC server
-                logger.debug("BatchId: {} Sending Q2 Benchmark for Symbol:{}",emaStream.getBatchSeqId(),emaStream.getSymbol());
+                logger.info("BatchId: {} Sending Q2 Benchmark for Symbol:{}",emaStream.getBatchSeqId(),emaStream.getSymbol());
                 if (emaStream.getBatchEnd() && !emaStream.getBenchMarkSend()) {
                     context.output(benchMarkQ2, new ResultQ2Wrapper(emaStream.getBatchSeqId(), null, emaStream.getTotalBenchMarkEvents(), emaStream.getBatchEnd(), false));
 
