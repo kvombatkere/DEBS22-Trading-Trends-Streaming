@@ -43,7 +43,7 @@ public class MainApplication {
     public static long benchId;
     public static ChallengerGrpc.ChallengerBlockingStub client;
     public static Benchmark benchmark;
-    public static Boolean visualizationFlag = Boolean.TRUE;
+    public static Boolean visualizationFlag = Boolean.FALSE;
     private static final Logger logger = LoggerFactory.getLogger(MainApplication.class);
     private static final OutputTag<ResultQ1Wrapper> benchMarkQ1 = new OutputTag<>("benchmark-q1"){};
     private static final OutputTag<ResultQ2Wrapper> benchMarkQ2 = new OutputTag<>("benchmark-q2"){};
@@ -232,9 +232,23 @@ public class MainApplication {
                     context.timerService().currentProcessingTime(), lastStockMeasurement.getSecurityTypeValue());
             emaValue38State.update(ema38);
             emaValue100State.update(ema100);
-            logger.debug("Symbol: {} Updating EMA value since the window has ended..... {}",lastStockMeasurement.getSymbol(),new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z").format(new Date(timestamp)));
+            logger.info("Symbol: {} Updating EMA value since the window has ended..... {}",lastStockMeasurement.getSymbol(),new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z").format(new Date(timestamp)));
             out.collect(emaStream);
             lastWindowEvent.remove(timestamp);
+            if (visualizationFlag){
+                getRuntimeContext().getMetricGroup().addGroup("symbol",emaStream.getSymbol()).addGroup("smoothingFactor","38").gauge("EMA", new Gauge<Float>() {
+                    @Override
+                    public Float getValue() {
+                        return emaStream.getEma38DaysValue();
+                    }
+                });
+                getRuntimeContext().getMetricGroup().addGroup("symbol",emaStream.getSymbol()).addGroup("smoothingFactor","100").gauge("EMA", new Gauge<Float>() {
+                    @Override
+                    public Float getValue() {
+                        return emaStream.getEma100DaysValue();
+                    }
+                });
+            }
         }
     }
 
@@ -512,24 +526,6 @@ public class MainApplication {
                 logger.debug("Q1: Finished processing the last batch..... {}",batchId);
                 collector.collect(true);
             }
-            if (visualizationFlag){
-                for (ResultQ1Wrapper resultQ1 : iterable) {
-                    if(resultQ1.getSendBenchmark()) {
-                        getRuntimeContext().getMetricGroup().gauge("EMA38_" + resultQ1.getSymbol(), new Gauge<Integer>() {
-                            @Override
-                            public Integer getValue() {
-                                return Math.round(resultQ1.getEma38Value());
-                            }
-                        });
-                        getRuntimeContext().getMetricGroup().gauge("EMA100_" + resultQ1.getSymbol(), new Gauge<Integer>() {
-                            @Override
-                            public Integer getValue() {
-                                return Math.round(resultQ1.getEma100Value());
-                            }
-                        });
-                    }
-                }
-            }
         }
     }
 
@@ -609,7 +605,7 @@ public class MainApplication {
                     if(Objects.nonNull(resultQ2.getCrossoverEventList())) {
                         crossOverEvents.addAll(resultQ2.getCrossoverEventList());
                     }
-                    getRuntimeContext().getMetricGroup().gauge("numberCrossoverEvents", new Gauge<Integer>() {
+                    getRuntimeContext().getMetricGroup().addGroup("q2").gauge("numberCrossoverEvents", new Gauge<Integer>() {
                         @Override
                         public Integer getValue() {
                             return crossOverEvents.size();
