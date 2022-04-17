@@ -66,7 +66,7 @@ public class GrpcClient implements SourceFunction<IncomingBatch> {
         MainApplication.client = challengeClient;
         if(Objects.isNull(newBenchmark)) {
             BenchmarkConfiguration bc = BenchmarkConfiguration.newBuilder()
-                    .setBenchmarkName("DEBS22-Final-Code " + new Date())
+                    .setBenchmarkName("DEBS22-Final-Code-Visualization " + new Date())
                     .addQueries(Query.Q1)
                     .addQueries(Query.Q2)
                     .setToken("azxmuatebdepfrzxbpvusigcnzxuyavi") //go to: https://challenge.msrg.in.tum.de/profile

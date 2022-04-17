@@ -84,11 +84,11 @@ public class Ema implements Serializable {
      * Calculate the EMA value based on set parameters
      */
     public void calculateEMA() {
-        logger.debug("Calculating EMA here.....");
         float j = this.smoothingFactor;
         float closePrice = this.lastPriceChange;
         float previousEMA = Objects.isNull(this.getPreviousEmaValue()) ?0:this.getPreviousEmaValue().getEmaValue();
         float currentEMAValue = closePrice * (2 / (1 + j)) + previousEMA * (1 - (2 / (1 + j)));
+        logger.info("EMA {}: Symbol {} Previous value: {} Current Value: {}",smoothingFactor,symbol,previousEMA,currentEMAValue);
         this.emaValue = currentEMAValue;
     }
 

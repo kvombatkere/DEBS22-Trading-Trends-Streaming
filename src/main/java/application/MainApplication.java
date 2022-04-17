@@ -43,7 +43,7 @@ public class MainApplication {
     public static long benchId;
     public static ChallengerGrpc.ChallengerBlockingStub client;
     public static Benchmark benchmark;
-    public static Boolean visualizationFlag = Boolean.FALSE;
+    public static Boolean visualizationFlag = Boolean.TRUE;
     private static final Logger logger = LoggerFactory.getLogger(MainApplication.class);
     private static final OutputTag<ResultQ1Wrapper> benchMarkQ1 = new OutputTag<>("benchmark-q1"){};
     private static final OutputTag<ResultQ2Wrapper> benchMarkQ2 = new OutputTag<>("benchmark-q2"){};
@@ -51,8 +51,8 @@ public class MainApplication {
     public static void main(String[] args) throws Exception {
         //Set up the streaming execution environment
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-        env.setParallelism(20); //set parallelism
-        env.setBufferTimeout(10L); //buffer timeout
+        env.setParallelism(6); //set parallelism
+        env.setBufferTimeout(100L); //buffer timeout
 
         Class<?> unmodColl = Class.forName("java.util.Collections$UnmodifiableCollection");
         env.getConfig().addDefaultKryoSerializer(unmodColl, UnmodifiableCollectionsSerializer.class);
@@ -60,7 +60,7 @@ public class MainApplication {
         DataStream<IncomingBatch> incomingBatchDataStream = env.addSource(new GrpcClient(benchmark)).name("API");
 
         //Source Operator
-        DataStream<StockMeasurement> measurements = incomingBatchDataStream.flatMap(new EventGenerator(benchmark)).name("Event Generator").setParallelism(10);
+        DataStream<StockMeasurement> measurements = incomingBatchDataStream.flatMap(new EventGenerator(benchmark)).name("Event Generator").setParallelism(1);
         KeyedStream<StockMeasurement,String> stockKeyedStream = measurements
                 .assignTimestampsAndWatermarks(WatermarkStrategy.forGenerator(context -> new StockMeasurementWatermarkGenerator()).withTimestampAssigner(new StockMeasurementWaterMark()))
                 .keyBy(StockMeasurement::getSymbol);
@@ -71,7 +71,7 @@ public class MainApplication {
         //Sideoutput for processing Q1 results
         SingleOutputStreamOperator<Boolean> q1ResultsDataStream = emaDataStream.getSideOutput(benchMarkQ1).keyBy(ResultQ1Wrapper::getBatchSeqId).window(GlobalWindows.create())
                 .trigger(new ResultQ1Trigger())
-                .process(new ResultQ1ProcessWindow(benchmark)).setParallelism(20).name("Q1 Benchmark SideOutput");
+                .process(new ResultQ1ProcessWindow(benchmark)).setParallelism(6).name("Q1 Benchmark SideOutput");
 
         //Operator for Q2
         KeyedStream<EmaStream, String> keyStream = emaDataStream.keyBy(EmaStream::getSymbol);
@@ -80,7 +80,7 @@ public class MainApplication {
         //Handle Q2 result
         SingleOutputStreamOperator<Boolean> q2ResultsDataStream = q2OutputStream.getSideOutput(benchMarkQ2).keyBy(ResultQ2Wrapper::getBatchSeqId).window(GlobalWindows.create())
                 .trigger(new ResultQ2Trigger())
-                .process(new ResultQ2ProcessWindow(benchmark)).setParallelism(20).name("Q2 Benchmark SideOutput");
+                .process(new ResultQ2ProcessWindow(benchmark)).setParallelism(6).name("Q2 Benchmark SideOutput");
 
         //Close Operator: Closes on completion of Q1 and Q2
         q1ResultsDataStream.union(q2ResultsDataStream).countWindowAll(2).apply(new CloseBenchMarkClass(benchmark)).name("Close Benchmark");
@@ -224,6 +224,28 @@ public class MainApplication {
         public void onTimer(long timestamp, KeyedProcessFunction<String, StockMeasurement, EmaStream>.OnTimerContext context, Collector<EmaStream> out) throws Exception {
             StockMeasurement lastStockMeasurement = lastWindowEvent.get(timestamp);
             String symbol = lastStockMeasurement.getSymbol();
+            if (visualizationFlag && Objects.isNull(emaValue38State.value())) {
+                getRuntimeContext().getMetricGroup().addGroup("symbol",symbol).addGroup("smoothingFactor","38").gauge("EMA", new Gauge<Float>() {
+                    @Override
+                    public Float getValue() {
+                        try {
+                            return  Objects.isNull(emaValue38State.value())?0:emaValue38State.value().getEmaValue();
+                        } catch (IOException e) {
+                            return (float) 0;
+                        }
+                    }
+                });
+                getRuntimeContext().getMetricGroup().addGroup("symbol",symbol).addGroup("smoothingFactor","100").gauge("EMA", new Gauge<Float>() {
+                    @Override
+                    public Float getValue() {
+                        try {
+                            return  Objects.isNull(emaValue100State.value())?0:emaValue100State.value().getEmaValue();
+                        } catch (IOException e) {
+                            return (float) 0;
+                        }
+                    }
+                });
+            }
             Ema ema38 = new Ema(symbol, 38, lastStockMeasurement.getLastTradeTime(), emaValue38State.value(), lastStockMeasurement.getLastTradePrice());
             ema38.calculateEMA();
             Ema ema100 = new Ema(symbol, 100, lastStockMeasurement.getLastTradeTime(), emaValue100State.value(), lastStockMeasurement.getLastTradePrice());
@@ -232,23 +254,9 @@ public class MainApplication {
                     context.timerService().currentProcessingTime(), lastStockMeasurement.getSecurityTypeValue());
             emaValue38State.update(ema38);
             emaValue100State.update(ema100);
-            logger.info("Symbol: {} Updating EMA value since the window has ended..... {}",lastStockMeasurement.getSymbol(),new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z").format(new Date(timestamp)));
+            logger.debug("Symbol: {} Updating EMA value since the window has ended..... {}",lastStockMeasurement.getSymbol(),new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z").format(new Date(timestamp)));
             out.collect(emaStream);
             lastWindowEvent.remove(timestamp);
-            if (visualizationFlag){
-                getRuntimeContext().getMetricGroup().addGroup("symbol",emaStream.getSymbol()).addGroup("smoothingFactor","38").gauge("EMA", new Gauge<Float>() {
-                    @Override
-                    public Float getValue() {
-                        return emaStream.getEma38DaysValue();
-                    }
-                });
-                getRuntimeContext().getMetricGroup().addGroup("symbol",emaStream.getSymbol()).addGroup("smoothingFactor","100").gauge("EMA", new Gauge<Float>() {
-                    @Override
-                    public Float getValue() {
-                        return emaStream.getEma100DaysValue();
-                    }
-                });
-            }
         }
     }
 
@@ -599,20 +607,6 @@ public class MainApplication {
                 logger.debug("Q2: Finished processing the last batch.....{}",batchId);
                 collector.collect(true);
             }
-            if (visualizationFlag){
-                for (ResultQ2Wrapper resultQ2 : iterable) {
-                    crossOverEvents.clear();
-                    if(Objects.nonNull(resultQ2.getCrossoverEventList())) {
-                        crossOverEvents.addAll(resultQ2.getCrossoverEventList());
-                    }
-                    getRuntimeContext().getMetricGroup().addGroup("q2").gauge("numberCrossoverEvents", new Gauge<Integer>() {
-                        @Override
-                        public Integer getValue() {
-                            return crossOverEvents.size();
-                        }
-                    });
-                }
-            }
         }
     }
 
@@ -692,6 +686,14 @@ public class MainApplication {
                     }
                     // Update the state with the list
                     last3CrossoversState.update(currentList);
+                    if (visualizationFlag){
+                            getRuntimeContext().getMetricGroup().addGroup("symbol",emaStream.getSymbol()).gauge("numberCrossoverEvents", new Gauge<Integer>() {
+                                @Override
+                                public Integer getValue() {
+                                    return currentList.size();
+                                }
+                            });
+                    }
                 }
             } else {
                 // Check if batch has finished so Query 2 results should be sent to GRPC server per symbol
