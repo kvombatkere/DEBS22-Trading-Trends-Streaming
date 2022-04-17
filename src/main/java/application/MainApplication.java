@@ -43,7 +43,7 @@ public class MainApplication {
     public static long benchId;
     public static ChallengerGrpc.ChallengerBlockingStub client;
     public static Benchmark benchmark;
-    public static Boolean visualizationFlag = Boolean.TRUE;
+    public static Boolean visualizationFlag = Boolean.FALSE;
     private static final Logger logger = LoggerFactory.getLogger(MainApplication.class);
     private static final OutputTag<ResultQ1Wrapper> benchMarkQ1 = new OutputTag<>("benchmark-q1"){};
     private static final OutputTag<ResultQ2Wrapper> benchMarkQ2 = new OutputTag<>("benchmark-q2"){};
