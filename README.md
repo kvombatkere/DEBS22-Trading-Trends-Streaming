@@ -1,9 +1,12 @@
-## DEBS 2022 Grand Challenge - Group11
-## Team Members:Vivek Unnikrishnan, Emmanouil Kritharakis, Karan Vombatkere, Shengyao Luo
-#### April 12, 2022
+## DEBS 2022 Grand Challenge - Group 11
+### April 15, 2022
 Code repository for DEBS 2022 Grand Challenge submission for Group 11.
 - DEBS 2022 Grand Challenge information: https://2022.debs.org/call-for-grand-challenge-solutions/
 - Evaluation platform and Leaderboard: https://challenge.msrg.in.tum.de/leaderboard
+- Short video overview of project: https://youtu.be/UU6BBR7Xo20
+
+### Team Members
+Vivek Unnikrishnan, Emmanouil Kritharakis, Karan Vombatkere, Shengyao Luo
 
 ## Design Overview
 ![Operator Design](design.jpeg?raw=true "Operator Design")
