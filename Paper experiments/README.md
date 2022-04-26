@@ -1,5 +1,4 @@
-## Instructions 
-Reproduce paper's experimental images following the above steps: <br>
+## Instructions to reproduce paper's experimental images
 * Install required python libraries with the following command:
 ```
 pip3 install pandas, numpy, matplotlib, warnings
