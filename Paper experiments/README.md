@@ -1,5 +1,3 @@
-# Project Documentation
-
 ## Required libraries
 
 ```
