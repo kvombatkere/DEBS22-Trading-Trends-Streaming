@@ -1,15 +1,15 @@
 ## Detecting Trading Trends in Streaming Financial Data using Apache Flink
 ### DEBS 2022 Grand Challenge - Group 11
 Code repository for DEBS 2022 Grand Challenge submission for Group 11.
-- DEBS 2022 Grand Challenge information: https://2022.debs.org/call-for-grand-challenge-solutions/
-- Evaluation platform and Leaderboard: https://challenge.msrg.in.tum.de/leaderboard
-- Project Code Walkthrough: https://youtu.be/UU6BBR7Xo20
-- Project Presentation Video: https://youtu.be/gSLPqfwrJ6s
+- [DEBS 2022 Grand Challenge information](https://2022.debs.org/call-for-grand-challenge-solutions/)
+- [Evaluation platform and Leaderboard](https://challenge.msrg.in.tum.de/leaderboard)
+- [Project Code Walkthrough](https://youtu.be/UU6BBR7Xo20)
+- [Project Presentation Video](https://youtu.be/gSLPqfwrJ6s)
 
 ## Design Overview
 ![Operator Design](design.jpeg?raw=true "Operator Design")
 
-Link to technical paper: https://github.com/kvombatkere/DEBS22-Group11/blob/main/Deliverables/Technical_Paper.pdf
+You can find our technical paper [here](https://github.com/kvombatkere/DEBS22-Group11/blob/main/Deliverables/Technical_Paper.pdf).
 
 The following Flink operators have been designed to handle the stream of input batches. (Please click on the image for an enlarged view of the dataflow and dashboard)
 1. **Source API**: Gets new batches from the Challenge Client
