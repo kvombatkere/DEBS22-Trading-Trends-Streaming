@@ -51,8 +51,8 @@ public class MainApplication {
     public static void main(String[] args) throws Exception {
         //Set up the streaming execution environment
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-        env.setParallelism(6); //set parallelism
-        env.setBufferTimeout(100L); //buffer timeout
+        env.setParallelism(15); //set parallelism
+        //env.setBufferTimeout(10L); //buffer timeout
 
         Class<?> unmodColl = Class.forName("java.util.Collections$UnmodifiableCollection");
         env.getConfig().addDefaultKryoSerializer(unmodColl, UnmodifiableCollectionsSerializer.class);
@@ -71,7 +71,8 @@ public class MainApplication {
         //Sideoutput for processing Q1 results
         SingleOutputStreamOperator<Boolean> q1ResultsDataStream = emaDataStream.getSideOutput(benchMarkQ1).keyBy(ResultQ1Wrapper::getBatchSeqId).window(GlobalWindows.create())
                 .trigger(new ResultQ1Trigger())
-                .process(new ResultQ1ProcessWindow(benchmark)).setParallelism(6).name("Q1 Benchmark SideOutput");
+                .process(new ResultQ1ProcessWindow(benchmark))
+                .name("Q1 Benchmark SideOutput");
 
         //Operator for Q2
         KeyedStream<EmaStream, String> keyStream = emaDataStream.keyBy(EmaStream::getSymbol);
@@ -80,7 +81,8 @@ public class MainApplication {
         //Handle Q2 result
         SingleOutputStreamOperator<Boolean> q2ResultsDataStream = q2OutputStream.getSideOutput(benchMarkQ2).keyBy(ResultQ2Wrapper::getBatchSeqId).window(GlobalWindows.create())
                 .trigger(new ResultQ2Trigger())
-                .process(new ResultQ2ProcessWindow(benchmark)).setParallelism(6).name("Q2 Benchmark SideOutput");
+                .process(new ResultQ2ProcessWindow(benchmark))
+                .name("Q2 Benchmark SideOutput");
 
         //Close Operator: Closes on completion of Q1 and Q2
         q1ResultsDataStream.union(q2ResultsDataStream).countWindowAll(2).apply(new CloseBenchMarkClass(benchmark)).name("Close Benchmark");
