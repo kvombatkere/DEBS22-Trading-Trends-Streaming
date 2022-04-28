@@ -1,5 +1,5 @@
-### Detecting Trading Trends in Streaming Financial Data using Apache Flink
-#### DEBS 2022 Grand Challenge - Group 11
+## Detecting Trading Trends in Streaming Financial Data using Apache Flink
+### DEBS 2022 Grand Challenge - Group 11
 Code repository for DEBS 2022 Grand Challenge submission for Group 11.
 - DEBS 2022 Grand Challenge information: https://2022.debs.org/call-for-grand-challenge-solutions/
 - Evaluation platform and Leaderboard: https://challenge.msrg.in.tum.de/leaderboard
@@ -32,6 +32,7 @@ The following Flink operators have been designed to handle the stream of input b
 4. Upload the **GrpcClient-.jar** to the Flink dashboard (via the _Submit Job_ tab) and submit the job to run.
 5. The progress of the job can be tracked in the **Running Jobs** tab on the Flink dashboard.
 
-#### Contributors
+## Contributors
 Vivek Unnikrishnan, Emmanouil Kritharakis, Karan Vombatkere, Shengyao Luo
+
 Boston University, April 2022
