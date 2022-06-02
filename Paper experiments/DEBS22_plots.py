@@ -23,6 +23,10 @@ def latency_plot():
     df = pd.concat([df_latency_tw, df_latency_cw, df_name], axis=1, ignore_index=True)
     df.columns = columns
     ax = df.plot(x="Operator Parallelism", y=["Tumbling window", "Custom window"], kind='bar')
+    bars = ax.patches
+    for i in range(len(bars)):
+        if i < 6:
+            bars[i].set_hatch('//')
 
     plt.xticks(rotation='horizontal')
     plt.legend(columns, fontsize=12)
@@ -44,7 +48,10 @@ def throughput_plot():
     df = pd.concat([df_throughput_tw, df_throughput_cw, df_name], axis=1, ignore_index=True)
     df.columns = columns
     ax = df.plot(x="Operator Parallelism", y=["Tumbling window", "Custom window"], kind='bar')
-
+    bars = ax.patches
+    for i in range(len(bars)):
+        if i < 6:
+            bars[i].set_hatch('//')
     plt.xticks(rotation='horizontal')
     plt.legend(columns, fontsize=12)
     plt.ylabel('Throughput \n (batches/sec)', fontsize=14)
